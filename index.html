@@ -97,6 +97,7 @@
             border: 2px solid #ff0066;
             border-radius: 50%;
             z-index: 5;
+            display: none;
         }
 
         .joystick-knob {
@@ -120,6 +121,7 @@
             border: 2px solid #00ffff;
             border-radius: 50%;
             z-index: 5;
+            display: none;
         }
 
         #shootZone {
@@ -131,6 +133,7 @@
             background: rgba(255, 255, 0, 0.1);
             border: 1px dashed yellow;
             z-index: 5;
+            display: none;
         }
 
         /* Победа */
@@ -157,6 +160,18 @@
             border-radius: 5px;
             cursor: pointer;
         }
+
+        #debugInfo {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 100;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -172,6 +187,11 @@
                 <button class="level-btn" data-level="3">Уровень 3</button>
                 <button class="level-btn" data-level="4">Уровень 4</button>
                 <button class="level-btn" data-level="5">Уровень 5</button>
+            </div>
+            <div style="color: white; margin-top: 20px; text-align: center;">
+                Нажми на уровень чтобы начать!<br>
+                Управление: левый джойстик - движение, правый - прицел,<br>
+                зона сверху слева - стрельба
             </div>
         </div>
 
@@ -189,6 +209,9 @@
             <h2>ТЫ ВЫИГРАЛ!</h2>
             <button id="nextLevel">ДАЛЬШЕ</button>
         </div>
+
+        <!-- Отладка -->
+        <div id="debugInfo"></div>
     </div>
 
     <script>
@@ -199,6 +222,7 @@
                 this.menuScreen = document.getElementById('menuScreen');
                 this.winScreen = document.getElementById('winScreen');
                 this.nextLevelBtn = document.getElementById('nextLevel');
+                this.debugInfo = document.getElementById('debugInfo');
                 
                 this.setupCanvas();
                 this.setupControls();
@@ -211,7 +235,19 @@
                 this.camera = { x: 0, y: 0 };
                 this.bloodParticles = [];
                 
+                // Сохраняем ссылку на игру для отладки
+                window.miamiGame = this;
+                
+                console.log('Игра инициализирована!');
+                this.debug('Игра загружена. Нажми на уровень в меню.');
+                
                 this.gameLoop();
+            }
+
+            debug(message) {
+                console.log(message);
+                this.debugInfo.innerHTML = message;
+                this.debugInfo.style.display = 'block';
             }
 
             setupCanvas() {
@@ -262,6 +298,7 @@
                 shootZone.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     this.shooting = true;
+                    this.debug('СТРЕЛЬБА!');
                 });
 
                 shootZone.addEventListener('touchend', (e) => {
@@ -326,11 +363,11 @@
 
             setupLevels() {
                 this.levels = {
-                    1: this.createLevel(5),
-                    2: this.createLevel(8),
-                    3: this.createLevel(12),
-                    4: this.createLevel(15),
-                    5: this.createLevel(20)
+                    1: this.createLevel(3),  // Меньше врагов для теста
+                    2: this.createLevel(5),
+                    3: this.createLevel(8),
+                    4: this.createLevel(12),
+                    5: this.createLevel(15)
                 };
             }
 
@@ -365,7 +402,7 @@
                 walls.push({ x: this.worldWidth - 20, y: 0, width: 20, height: this.worldHeight }); // право
 
                 // Внутренние стены (комнаты)
-                for (let i = 0; i < 8; i++) {
+                for (let i = 0; i < 6; i++) {
                     const x = 200 + Math.random() * 1400;
                     const y = 100 + Math.random() * 400;
                     const width = 80 + Math.random() * 120;
@@ -383,11 +420,15 @@
             setupMenu() {
                 const levelButtons = document.querySelectorAll('.level-btn');
                 levelButtons.forEach(btn => {
-                    btn.addEventListener('click', () => {
+                    // Убираем класс locked со всех кнопок
+                    btn.classList.remove('locked');
+                    
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
                         const level = parseInt(btn.dataset.level);
-                        if (!btn.classList.contains('locked')) {
-                            this.startLevel(level);
-                        }
+                        console.log('Нажата кнопка уровня:', level);
+                        this.debug(`Запуск уровня ${level}`);
+                        this.startLevel(level);
                     });
                 });
 
@@ -396,16 +437,37 @@
                     this.currentLevel++;
                     if (this.currentLevel > 5) {
                         this.currentLevel = 1;
+                        this.showMenu();
+                    } else {
+                        this.startLevel(this.currentLevel);
                     }
-                    this.startLevel(this.currentLevel);
+                });
+
+                // Добавляем обработчик для самого меню (на случай проблем с кнопками)
+                this.menuScreen.addEventListener('click', (e) => {
+                    console.log('Клик в меню:', e.target);
                 });
             }
 
+            showMenu() {
+                this.gameState = 'menu';
+                this.menuScreen.style.display = 'flex';
+                document.getElementById('leftJoystick').style.display = 'none';
+                document.getElementById('rightJoystick').style.display = 'none';
+                document.getElementById('shootZone').style.display = 'none';
+            }
+
             startLevel(level) {
+                console.log('Запуск уровня:', level);
                 this.currentLevel = level;
                 this.gameState = 'playing';
                 this.menuScreen.style.display = 'none';
                 this.winScreen.style.display = 'none';
+                
+                // Показываем управление
+                document.getElementById('leftJoystick').style.display = 'block';
+                document.getElementById('rightJoystick').style.display = 'block';
+                document.getElementById('shootZone').style.display = 'block';
                 
                 this.level = JSON.parse(JSON.stringify(this.levels[level]));
                 this.bloodParticles = [];
@@ -413,6 +475,8 @@
                 // Сброс камеры
                 this.camera.x = this.level.player.x - this.canvas.width / 2;
                 this.camera.y = this.level.player.y - this.canvas.height / 2;
+                
+                this.debug(`Уровень ${level} начался! Врагов: ${this.level.enemies.length}`);
             }
 
             update() {
@@ -422,6 +486,10 @@
                 this.updateCamera();
                 this.updateBlood();
                 this.checkWinCondition();
+
+                // Отладочная информация
+                const aliveEnemies = this.level.enemies.filter(enemy => enemy.alive).length;
+                this.debug(`Уровень: ${this.currentLevel} | Врагов: ${aliveEnemies}/${this.level.enemies.length} | Стрельба: ${this.shooting}`);
             }
 
             updatePlayer() {
@@ -467,6 +535,7 @@
                 if (closestEnemy) {
                     closestEnemy.alive = false;
                     this.createBlood(closestEnemy.x, closestEnemy.y);
+                    this.debug(`Убит враг! Осталось: ${this.level.enemies.filter(e => e.alive).length}`);
                 }
             }
 
@@ -494,76 +563,4 @@
                     if (particle.life <= 0) {
                         this.bloodParticles.splice(i, 1);
                     }
-                }
-            }
-
-            updateCamera() {
-                const player = this.level.player;
-                const targetX = player.x - this.canvas.width / 2;
-                const targetY = player.y - this.canvas.height / 2;
-                
-                // Плавное движение камеры с запаздыванием
-                this.camera.x += (targetX - this.camera.x) * 0.1;
-                this.camera.y += (targetY - this.camera.y) * 0.1;
-                
-                // Ограничение камеры в пределах мира
-                this.camera.x = Math.max(0, Math.min(this.worldWidth - this.canvas.width, this.camera.x));
-                this.camera.y = Math.max(0, Math.min(this.worldHeight - this.canvas.height, this.camera.y));
-            }
-
-            checkWinCondition() {
-                const aliveEnemies = this.level.enemies.filter(enemy => enemy.alive);
-                if (aliveEnemies.length === 0) {
-                    this.gameState = 'win';
-                    this.winScreen.style.display = 'block';
-                }
-            }
-
-            render() {
-                // Очистка
-                this.ctx.fillStyle = '#1a1a2e';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                if (this.gameState !== 'playing') return;
-                
-                this.ctx.save();
-                this.ctx.translate(-this.camera.x, -this.camera.y);
-                
-                // Рендер стен
-                this.ctx.fillStyle = '#333344';
-                this.level.walls.forEach(wall => {
-                    this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-                });
-                
-                // Рендер крови
-                this.ctx.fillStyle = '#ff0000';
-                this.bloodParticles.forEach(particle => {
-                    this.ctx.globalAlpha = particle.life;
-                    this.ctx.fillRect(
-                        Math.floor(particle.x),
-                        Math.floor(particle.y),
-                        3, 3
-                    );
-                });
-                this.ctx.globalAlpha = 1;
-                
-                // Рендер игрока
-                this.ctx.fillStyle = '#ff0066';
-                this.ctx.fillRect(
-                    Math.floor(this.level.player.x),
-                    Math.floor(this.level.player.y),
-                    this.level.player.width,
-                    this.level.player.height
-                );
-                
-                // Рендер врагов
-                this.level.enemies.forEach(enemy => {
-                    if (enemy.alive) {
-                        this.ctx.fillStyle = enemy.type === 0 ? '#00ff00' : 
-                                           enemy.type === 1 ? '#ffff00' : '#00ffff';
-                        this.ctx.fillRect(
-                            Math.floor(enemy.x),
-                            Math.floor(enemy.y),
-                            enemy.width,
-                            enemy.height
-                        
+     
