@@ -40,9 +40,9 @@
         #movePad {
             bottom: 30px;
             left: 30px;
-            width: 120px;
-            height: 120px;
-            background: rgba(0, 255, 255, 0.2);
+            width: 100px;
+            height: 100px;
+            background: rgba(0, 255, 255, 0.3);
             border: 2px solid #00ffff;
             border-radius: 50%;
         }
@@ -50,36 +50,37 @@
         #aimPad {
             bottom: 30px;
             right: 30px;
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 0, 170, 0.2);
+            width: 100px;
+            height: 100px;
+            background: rgba(255, 0, 170, 0.3);
             border: 2px solid #ff00aa;
             border-radius: 50%;
         }
 
         #fireButton {
             top: 30px;
-            right: 30px;
-            width: 100px;
-            height: 60px;
-            background: rgba(255, 50, 50, 0.3);
+            left: 30px;
+            width: 120px;
+            height: 80px;
+            background: rgba(255, 50, 50, 0.4);
             border: 2px solid #ff3232;
-            border-radius: 10px;
+            border-radius: 15px;
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.9rem;
+            font-size: 1.2rem;
+            font-weight: bold;
         }
 
         .padHandle {
             position: absolute;
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.8);
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.9);
             border-radius: 50%;
-            top: 35px;
-            left: 35px;
+            top: 30px;
+            left: 30px;
         }
 
         /* Экран победы */
@@ -88,7 +89,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.95);
             padding: 3rem;
             border: 3px solid #00ff00;
             border-radius: 15px;
@@ -119,10 +120,13 @@
         #gameStatus {
             position: absolute;
             top: 20px;
-            left: 20px;
+            right: 20px;
             color: #00ffff;
             font-size: 1.1rem;
             z-index: 50;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
         }
     </style>
 </head>
@@ -137,15 +141,15 @@
         <div id="aimPad" class="controlArea">
             <div class="padHandle"></div>
         </div>
-        <div id="fireButton" class="controlArea">ОГОНЬ</div>
+        <div id="fireButton" class="controlArea">СТРЕЛЯТЬ</div>
 
         <!-- Информация -->
-        <div id="gameStatus">Врагов: 10</div>
+        <div id="gameStatus">Врагов: 8</div>
 
         <!-- Победа -->
         <div id="victoryScreen">
-            <div class="victoryText">МИССИЯ ВЫПОЛНЕНА!</div>
-            <button class="nextButton">СЛЕДУЮЩИЙ УРОВЕНЬ</button>
+            <div class="victoryText">УРОВЕНЬ ПРОЙДЕН!</div>
+            <button class="nextButton">ДАЛЬШЕ</button>
         </div>
     </div>
 
@@ -155,7 +159,6 @@
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
                 
-                // Основные элементы
                 this.victoryScreen = document.getElementById('victoryScreen');
                 this.gameStatus = document.getElementById('gameStatus');
                 
@@ -168,23 +171,20 @@
                 
                 this.startLevel();
                 this.gameLoop();
+                
+                console.log('Игра запущена!');
             }
 
             setupGame() {
-                // Размеры canvas
                 this.canvas.width = window.innerWidth;
                 this.canvas.height = window.innerHeight;
                 
-                // Игровой мир
                 this.world = {
-                    width: 2000,
-                    height: 1000
+                    width: 1800,
+                    height: 900
                 };
                 
-                // Камера
                 this.camera = { x: 0, y: 0 };
-                
-                // Частицы
                 this.particles = [];
             }
 
@@ -201,22 +201,20 @@
                 const aimPad = document.getElementById('aimPad');
                 const fireBtn = document.getElementById('fireButton');
                 
-                // Движение
                 this.setupTouchPad(movePad, (x, y) => {
                     this.moveInput.x = x;
                     this.moveInput.y = y;
                 });
                 
-                // Прицеливание
                 this.setupTouchPad(aimPad, (x, y) => {
                     this.aimInput.x = x;
                     this.aimInput.y = y;
                 });
                 
-                // Стрельба
                 fireBtn.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     this.firing = true;
+                    console.log('Стрельба!');
                 });
                 
                 fireBtn.addEventListener('touchend', (e) => {
@@ -229,11 +227,29 @@
                 let activeTouch = null;
                 const handle = padElement.querySelector('.padHandle');
                 
+                const updatePosition = (touch) => {
+                    const rect = padElement.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+                    
+                    let x = (touch.clientX - centerX) / (rect.width / 2);
+                    let y = (touch.clientY - centerY) / (rect.height / 2);
+                    
+                    const length = Math.sqrt(x * x + y * y);
+                    if (length > 1) {
+                        x /= length;
+                        y /= length;
+                    }
+                    
+                    handle.style.transform = `translate(${x * 30}px, ${y * 30}px)`;
+                    callback(x, y);
+                };
+                
                 padElement.addEventListener('touchstart', (e) => {
                     e.preventDefault();
                     if (!activeTouch) {
                         activeTouch = e.touches[0].identifier;
-                        this.updatePadPosition(e.touches[0], padElement, handle, callback);
+                        updatePosition(e.touches[0]);
                     }
                 });
                 
@@ -241,7 +257,7 @@
                     e.preventDefault();
                     for (let touch of e.touches) {
                         if (touch.identifier === activeTouch) {
-                            this.updatePadPosition(touch, padElement, handle, callback);
+                            updatePosition(touch);
                             break;
                         }
                     }
@@ -260,24 +276,6 @@
                 });
             }
 
-            updatePadPosition(touch, pad, handle, callback) {
-                const rect = pad.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                
-                let x = (touch.clientX - centerX) / (rect.width / 2);
-                let y = (touch.clientY - centerY) / (rect.height / 2);
-                
-                const length = Math.sqrt(x * x + y * y);
-                if (length > 1) {
-                    x /= length;
-                    y /= length;
-                }
-                
-                handle.style.transform = `translate(${x * 35}px, ${y * 35}px)`;
-                callback(x, y);
-            }
-
             setupEvents() {
                 document.querySelector('.nextButton').addEventListener('click', () => {
                     this.victoryScreen.style.display = 'none';
@@ -287,22 +285,19 @@
             }
 
             startLevel() {
-                console.log('Запуск уровня:', this.currentLevel);
+                console.log('Запуск уровня', this.currentLevel);
                 this.victoryScreen.style.display = 'none';
                 this.gameActive = true;
                 
-                // Создаем уровень
                 this.generateLevel();
                 
-                // Позиция игрока
                 this.player = {
                     x: 200,
                     y: 300,
-                    size: 20,
-                    speed: 4
+                    size: 24,
+                    speed: 5
                 };
                 
-                // Сброс камеры
                 this.camera.x = this.player.x - this.canvas.width / 2;
                 this.camera.y = this.player.y - this.canvas.height / 2;
                 
@@ -313,33 +308,33 @@
                 this.enemies = [];
                 this.walls = [];
                 
-                const enemyCount = 5 + (this.currentLevel * 3);
+                const enemyCount = 5 + this.currentLevel * 2;
                 
                 // Внешние стены
-                this.walls.push({x: 0, y: 0, w: this.world.width, h: 30});
-                this.walls.push({x: 0, y: this.world.height - 30, w: this.world.width, h: 30});
-                this.walls.push({x: 0, y: 0, w: 30, h: this.world.height});
-                this.walls.push({x: this.world.width - 30, y: 0, w: 30, h: this.world.height});
+                this.walls.push({x: 0, y: 0, w: this.world.width, h: 40});
+                this.walls.push({x: 0, y: this.world.height - 40, w: this.world.width, h: 40});
+                this.walls.push({x: 0, y: 0, w: 40, h: this.world.height});
+                this.walls.push({x: this.world.width - 40, y: 0, w: 40, h: this.world.height});
                 
-                // Внутренние стены
-                for (let i = 0; i < 8; i++) {
-                    const x = 100 + Math.random() * (this.world.width - 300);
-                    const y = 100 + Math.random() * (this.world.height - 300);
-                    const w = 80 + Math.random() * 120;
-                    const h = 60 + Math.random() * 100;
+                // Внутренние стены (комнаты)
+                for (let i = 0; i < 6; i++) {
+                    const x = 150 + Math.random() * (this.world.width - 400);
+                    const y = 150 + Math.random() * (this.world.height - 400);
+                    const w = 100 + Math.random() * 150;
+                    const h = 80 + Math.random() * 120;
                     
-                    this.walls.push({x, y, w, h: 15});
-                    this.walls.push({x, y + h - 15, w, h: 15});
-                    this.walls.push({x, y, w: 15, h});
-                    this.walls.push({x: x + w - 15, y, w: 15, h});
+                    this.walls.push({x, y, w, h: 20});
+                    this.walls.push({x, y + h - 20, w, h: 20});
+                    this.walls.push({x, y, w: 20, h});
+                    this.walls.push({x: x + w - 20, y, w: 20, h});
                 }
                 
                 // Враги
                 for (let i = 0; i < enemyCount; i++) {
                     this.enemies.push({
-                        x: 400 + Math.random() * (this.world.width - 600),
+                        x: 300 + Math.random() * (this.world.width - 600),
                         y: 200 + Math.random() * (this.world.height - 400),
-                        size: 18,
+                        size: 20,
                         alive: true
                     });
                 }
@@ -357,38 +352,35 @@
             }
 
             updatePlayer() {
-                // Движение
                 if (this.moveInput.x !== 0 || this.moveInput.y !== 0) {
                     this.player.x += this.moveInput.x * this.player.speed;
                     this.player.y += this.moveInput.y * this.player.speed;
                 }
                 
-                // Границы мира
-                this.player.x = Math.max(40, Math.min(this.world.width - 40, this.player.x));
-                this.player.y = Math.max(40, Math.min(this.world.height - 40, this.player.y));
+                this.player.x = Math.max(50, Math.min(this.world.width - 50, this.player.x));
+                this.player.y = Math.max(50, Math.min(this.world.height - 50, this.player.y));
             }
 
             updateCamera() {
                 const targetX = this.player.x - this.canvas.width / 2;
                 const targetY = this.player.y - this.canvas.height / 2;
                 
-                this.camera.x += (targetX - this.camera.x) * 0.08;
-                this.camera.y += (targetY - this.camera.y) * 0.08;
+                this.camera.x += (targetX - this.camera.x) * 0.1;
+                this.camera.y += (targetY - this.camera.y) * 0.1;
                 
                 this.camera.x = Math.max(0, Math.min(this.world.width - this.canvas.width, this.camera.x));
                 this.camera.y = Math.max(0, Math.min(this.world.height - this.canvas.height, this.camera.y));
             }
 
             updateCombat() {
-                if (this.firing && this.aimInput.x !== 0 && this.aimInput.y !== 0) {
+                if (this.firing) {
                     this.fireWeapon();
                 }
             }
 
             fireWeapon() {
-                // Поиск ближайшего врага
                 let closest = null;
-                let minDist = 250;
+                let minDist = 300;
                 
                 for (let enemy of this.enemies) {
                     if (!enemy.alive) continue;
@@ -403,22 +395,22 @@
                     }
                 }
                 
-                // Уничтожение врага
                 if (closest) {
                     closest.alive = false;
                     this.createExplosion(closest.x, closest.y);
+                    console.log('Враг уничтожен!');
                 }
             }
 
             createExplosion(x, y) {
-                for (let i = 0; i < 12; i++) {
+                for (let i = 0; i < 15; i++) {
                     this.particles.push({
                         x: x,
                         y: y,
-                        vx: (Math.random() - 0.5) * 10,
-                        vy: (Math.random() - 0.5) * 10,
+                        vx: (Math.random() - 0.5) * 12,
+                        vy: (Math.random() - 0.5) * 12,
                         life: 1.0,
-                        decay: 0.03 + Math.random() * 0.02
+                        decay: 0.02 + Math.random() * 0.03
                     });
                 }
             }
@@ -428,7 +420,7 @@
                     const p = this.particles[i];
                     p.x += p.vx;
                     p.y += p.vy;
-                    p.vy += 0.3;
+                    p.vy += 0.2;
                     p.life -= p.decay;
                     
                     if (p.life <= 0) {
@@ -446,15 +438,15 @@
             }
 
             updateGameStatus() {
-                if (this.gameActive) {
+                if (this.gameActive && this.enemies) {
                     const alive = this.enemies.filter(e => e.alive).length;
                     const total = this.enemies.length;
-                    this.gameStatus.textContent = `Уровень: ${this.currentLevel} Врагов: ${alive}/${total}`;
+                    this.gameStatus.textContent = `Уровень ${this.currentLevel} | Врагов: ${alive}/${total}`;
                 }
             }
 
             render() {
-                // Фон
+                // Очистка экрана
                 this.ctx.fillStyle = '#0a0a1a';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
@@ -463,21 +455,21 @@
                 this.ctx.save();
                 this.ctx.translate(-this.camera.x, -this.camera.y);
                 
-                // Стены
-                this.ctx.fillStyle = '#2a2a4a';
+                // Рендер стен
+                this.ctx.fillStyle = '#333355';
                 this.walls.forEach(wall => {
                     this.ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
                 });
                 
-                // Частицы
-                this.ctx.fillStyle = '#ff4444';
+                // Рендер частиц крови
+                this.ctx.fillStyle = '#ff0000';
                 this.particles.forEach(p => {
                     this.ctx.globalAlpha = p.life;
-                    this.ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+                    this.ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
                 });
                 this.ctx.globalAlpha = 1;
                 
-                // Игрок
+                // Рендер игрока
                 this.ctx.fillStyle = '#00ffff';
                 this.ctx.fillRect(
                     this.player.x - this.player.size / 2,
@@ -486,10 +478,10 @@
                     this.player.size
                 );
                 
-                // Враги
+                // Рендер врагов
+                this.ctx.fillStyle = '#ff00aa';
                 this.enemies.forEach(enemy => {
                     if (enemy.alive) {
-                        this.ctx.fillStyle = '#ff00aa';
                         this.ctx.fillRect(
                             enemy.x - enemy.size / 2,
                             enemy.y - enemy.size / 2,
@@ -509,19 +501,14 @@
             }
         }
 
-        // Запуск при загрузке
+        // Запуск игры
         window.addEventListener('load', () => {
             new NeonGame();
         });
 
-        // Адаптация размера
         window.addEventListener('resize', () => {
-            const game = window.neonGame;
-            if (game) {
-                game.canvas.width = window.innerWidth;
-                game.canvas.height = window.innerHeight;
-            }
+            location.reload();
         });
     </script>
 </body>
-    </html>
+</html>
