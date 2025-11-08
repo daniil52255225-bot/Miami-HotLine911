@@ -31,53 +31,6 @@
             background: #111;
         }
 
-        /* Экран меню */
-        #startMenu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #0a0a2a, #1a0033);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-        }
-
-        .gameTitle {
-            font-size: 3rem;
-            color: #00ffff;
-            text-shadow: 0 0 20px #00ffff, 0 0 40px #00ffff;
-            margin-bottom: 2rem;
-            font-weight: bold;
-        }
-
-        .levelGrid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin: 2rem 0;
-        }
-
-        .levelOption {
-            padding: 1rem 2rem;
-            background: #ff00aa;
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 0 15px #ff00aa;
-        }
-
-        .levelOption:hover {
-            background: #ff33bb;
-            transform: scale(1.1);
-        }
-
         /* Элементы управления */
         .controlArea {
             position: absolute;
@@ -176,18 +129,6 @@
 <body>
     <div id="gameWrapper">
         <canvas id="gameCanvas"></canvas>
-        
-        <!-- Стартовое меню -->
-        <div id="startMenu">
-            <div class="gameTitle">NEON REVENGE</div>
-            <div class="levelGrid">
-                <button class="levelOption" data-stage="1">УЛИЦЫ</button>
-                <button class="levelOption" data-stage="2">КЛУБ</button>
-                <button class="levelOption" data-stage="3">ГАРАЖ</button>
-                <button class="levelOption" data-stage="4">КРЫША</button>
-                <button class="levelOption" data-stage="5">ФИНАЛ</button>
-            </div>
-        </div>
 
         <!-- Управление -->
         <div id="movePad" class="controlArea">
@@ -199,7 +140,7 @@
         <div id="fireButton" class="controlArea">ОГОНЬ</div>
 
         <!-- Информация -->
-        <div id="gameStatus">Уровень: - Врагов: -</div>
+        <div id="gameStatus">Врагов: 10</div>
 
         <!-- Победа -->
         <div id="victoryScreen">
@@ -215,15 +156,17 @@
                 this.ctx = this.canvas.getContext('2d');
                 
                 // Основные элементы
-                this.startMenu = document.getElementById('startMenu');
                 this.victoryScreen = document.getElementById('victoryScreen');
                 this.gameStatus = document.getElementById('gameStatus');
                 
                 this.setupGame();
                 this.setupInput();
-                this.setupMenu();
+                this.setupEvents();
                 
-                this.gameActive = false;
+                this.gameActive = true;
+                this.currentLevel = 1;
+                
+                this.startLevel();
                 this.gameLoop();
             }
 
@@ -234,8 +177,8 @@
                 
                 // Игровой мир
                 this.world = {
-                    width: 2400,
-                    height: 1200
+                    width: 2000,
+                    height: 1000
                 };
                 
                 // Камера
@@ -335,33 +278,21 @@
                 callback(x, y);
             }
 
-            setupMenu() {
-                const levelButtons = document.querySelectorAll('.levelOption');
-                levelButtons.forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        const level = parseInt(btn.dataset.stage);
-                        this.launchLevel(level);
-                    });
-                });
-                
+            setupEvents() {
                 document.querySelector('.nextButton').addEventListener('click', () => {
                     this.victoryScreen.style.display = 'none';
                     this.currentLevel++;
-                    if (this.currentLevel > 5) this.currentLevel = 1;
-                    this.launchLevel(this.currentLevel);
+                    this.startLevel();
                 });
             }
 
-            launchLevel(levelNum) {
-                console.log('Запуск уровня:', levelNum);
-                this.startMenu.style.display = 'none';
+            startLevel() {
+                console.log('Запуск уровня:', this.currentLevel);
                 this.victoryScreen.style.display = 'none';
-                
-                this.currentLevel = levelNum;
                 this.gameActive = true;
                 
                 // Создаем уровень
-                this.generateLevel(levelNum);
+                this.generateLevel();
                 
                 // Позиция игрока
                 this.player = {
@@ -378,11 +309,11 @@
                 this.updateGameStatus();
             }
 
-            generateLevel(level) {
+            generateLevel() {
                 this.enemies = [];
                 this.walls = [];
                 
-                const enemyCount = [8, 12, 15, 18, 20][level - 1];
+                const enemyCount = 5 + (this.currentLevel * 3);
                 
                 // Внешние стены
                 this.walls.push({x: 0, y: 0, w: this.world.width, h: 30});
@@ -391,7 +322,7 @@
                 this.walls.push({x: this.world.width - 30, y: 0, w: 30, h: this.world.height});
                 
                 // Внутренние стены
-                for (let i = 0; i < 10; i++) {
+                for (let i = 0; i < 8; i++) {
                     const x = 100 + Math.random() * (this.world.width - 300);
                     const y = 100 + Math.random() * (this.world.height - 300);
                     const w = 80 + Math.random() * 120;
@@ -516,8 +447,8 @@
 
             updateGameStatus() {
                 if (this.gameActive) {
-                    const alive = this.enemies ? this.enemies.filter(e => e.alive).length : 0;
-                    const total = this.enemies ? this.enemies.length : 0;
+                    const alive = this.enemies.filter(e => e.alive).length;
+                    const total = this.enemies.length;
                     this.gameStatus.textContent = `Уровень: ${this.currentLevel} Врагов: ${alive}/${total}`;
                 }
             }
@@ -590,4 +521,7 @@
                 game.canvas.width = window.innerWidth;
                 game.canvas.height = window.innerHeight;
             }
-    
+        });
+    </script>
+</body>
+    </html>
