@@ -3,22 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>NEON REVENGE</title>
+    <title>MIRROR DUEL</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
 
         body {
             background: #000;
             overflow: hidden;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(45deg, #0a0a2a, #1a0033);
         }
 
-        #gameWrapper {
+        #gameContainer {
             position: fixed;
             top: 0;
             left: 0;
@@ -28,446 +31,430 @@
 
         #gameCanvas {
             display: block;
-            background: #111;
+            background: transparent;
         }
 
-        /* Элементы управления */
-        .controlArea {
+        #hud {
             position: absolute;
-            pointer-events: auto;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: #00ffff;
+            font-size: 24px;
+            text-shadow: 0 0 10px #00ffff;
+            z-index: 10;
         }
 
-        #movePad {
+        #healthContainer {
+            position: absolute;
             bottom: 30px;
-            left: 30px;
-            width: 100px;
-            height: 100px;
-            background: rgba(0, 255, 255, 0.3);
-            border: 2px solid #00ffff;
-            border-radius: 50%;
-        }
-
-        #aimPad {
-            bottom: 30px;
-            right: 30px;
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 0, 170, 0.3);
-            border: 2px solid #ff00aa;
-            border-radius: 50%;
-        }
-
-        #fireButton {
-            top: 30px;
-            left: 30px;
-            width: 120px;
-            height: 80px;
-            background: rgba(255, 50, 50, 0.4);
-            border: 2px solid #ff3232;
-            border-radius: 15px;
-            color: white;
+            left: 50%;
+            transform: translateX(-50%);
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            font-weight: bold;
+            gap: 10px;
+            z-index: 10;
         }
 
-        .padHandle {
+        .healthBar {
+            width: 80px;
+            height: 20px;
+            background: rgba(255, 0, 0, 0.3);
+            border: 2px solid #ff0000;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .healthFill {
+            height: 100%;
+            background: #00ff00;
+            transition: width 0.3s;
+        }
+
+        #playerHealth .healthFill {
+            background: linear-gradient(90deg, #00ff00, #00ff88);
+        }
+
+        #enemyHealth .healthFill {
+            background: linear-gradient(90deg, #ff0000, #ff4400);
+        }
+
+        #controlsInfo {
             position: absolute;
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.9);
-            border-radius: 50%;
-            top: 30px;
-            left: 30px;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffff00;
+            text-align: center;
+            font-size: 14px;
+            text-shadow: 0 0 5px #ffff00;
         }
 
-        /* Экран победы */
-        #victoryScreen {
+        #gameOver {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.95);
-            padding: 3rem;
-            border: 3px solid #00ff00;
-            border-radius: 15px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border: 3px solid #00ffff;
+            border-radius: 20px;
             text-align: center;
-            z-index: 200;
-            display: none;
-        }
-
-        .victoryText {
-            color: #00ff00;
-            font-size: 2rem;
-            margin-bottom: 2rem;
-            text-shadow: 0 0 10px #00ff00;
-        }
-
-        .nextButton {
-            padding: 1rem 2rem;
-            background: #00ff00;
-            color: black;
-            border: none;
-            border-radius: 8px;
-            font-size: 1.2rem;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        /* Статус игры */
-        #gameStatus {
-            position: absolute;
-            top: 20px;
-            right: 20px;
             color: #00ffff;
-            font-size: 1.1rem;
-            z-index: 50;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            border-radius: 5px;
+            display: none;
+            z-index: 100;
+        }
+
+        #restartBtn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            background: #00ffff;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #restartBtn:hover {
+            background: #00ff88;
+            transform: scale(1.1);
+        }
+
+        .mirrorLine {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(to bottom, 
+                transparent 0%, 
+                #00ffff 20%, 
+                #00ffff 80%, 
+                transparent 100%);
+            box-shadow: 0 0 20px #00ffff;
+            z-index: 5;
         }
     </style>
 </head>
 <body>
-    <div id="gameWrapper">
+    <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
-
-        <!-- Управление -->
-        <div id="movePad" class="controlArea">
-            <div class="padHandle"></div>
+        <div class="mirrorLine"></div>
+        
+        <div id="hud">
+            <div id="score">ЗЕРКАЛЬНЫЙ ДУЭЛЬ</div>
         </div>
-        <div id="aimPad" class="controlArea">
-            <div class="padHandle"></div>
+        
+        <div id="healthContainer">
+            <div id="playerHealth" class="healthBar">
+                <div class="healthFill" style="width: 100%"></div>
+            </div>
+            <div id="enemyHealth" class="healthBar">
+                <div class="healthFill" style="width: 100%"></div>
+            </div>
         </div>
-        <div id="fireButton" class="controlArea">СТРЕЛЯТЬ</div>
-
-        <!-- Информация -->
-        <div id="gameStatus">Врагов: 8</div>
-
-        <!-- Победа -->
-        <div id="victoryScreen">
-            <div class="victoryText">УРОВЕНЬ ПРОЙДЕН!</div>
-            <button class="nextButton">ДАЛЬШЕ</button>
+        
+        <div id="controlsInfo">
+            Двигай палец - прицел движется зеркально<br>
+            Отпусти палец - выстрел!
+        </div>
+        
+        <div id="gameOver">
+            <h2 id="resultText">ПОБЕДА!</h2>
+            <div id="gameStats"></div>
+            <button id="restartBtn">НОВАЯ ДУЭЛЬ</button>
         </div>
     </div>
 
     <script>
-        class NeonGame {
+        class MirrorDuel {
             constructor() {
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
-                
-                this.victoryScreen = document.getElementById('victoryScreen');
-                this.gameStatus = document.getElementById('gameStatus');
+                this.gameOverScreen = document.getElementById('gameOver');
+                this.restartBtn = document.getElementById('restartBtn');
                 
                 this.setupGame();
                 this.setupInput();
                 this.setupEvents();
                 
-                this.gameActive = true;
-                this.currentLevel = 1;
-                
-                this.startLevel();
+                this.gameState = 'playing';
                 this.gameLoop();
-                
-                console.log('Игра запущена!');
             }
 
             setupGame() {
                 this.canvas.width = window.innerWidth;
                 this.canvas.height = window.innerHeight;
                 
-                this.world = {
-                    width: 1800,
-                    height: 900
+                // Игрок и враг
+                this.player = {
+                    x: this.canvas.width * 0.25,
+                    y: this.canvas.height / 2,
+                    size: 30,
+                    health: 100,
+                    aimX: this.canvas.width * 0.25,
+                    aimY: this.canvas.height / 2,
+                    shooting: false
                 };
                 
-                this.camera = { x: 0, y: 0 };
-                this.particles = [];
+                this.enemy = {
+                    x: this.canvas.width * 0.75,
+                    y: this.canvas.height / 2,
+                    size: 30,
+                    health: 100,
+                    aimX: this.canvas.width * 0.75,
+                    aimY: this.canvas.height / 2
+                };
+                
+                // Пули
+                this.bullets = [];
+                this.mirrorLineX = this.canvas.width / 2;
+                
+                // Визуальные эффекты
+                this.effects = [];
             }
 
             setupInput() {
-                this.moveInput = { x: 0, y: 0 };
-                this.aimInput = { x: 0, y: 0 };
-                this.firing = false;
+                this.touchActive = false;
+                this.currentTouch = null;
                 
-                this.setupTouchControls();
-            }
-
-            setupTouchControls() {
-                const movePad = document.getElementById('movePad');
-                const aimPad = document.getElementById('aimPad');
-                const fireBtn = document.getElementById('fireButton');
-                
-                this.setupTouchPad(movePad, (x, y) => {
-                    this.moveInput.x = x;
-                    this.moveInput.y = y;
-                });
-                
-                this.setupTouchPad(aimPad, (x, y) => {
-                    this.aimInput.x = x;
-                    this.aimInput.y = y;
-                });
-                
-                fireBtn.addEventListener('touchstart', (e) => {
+                this.canvas.addEventListener('touchstart', (e) => {
                     e.preventDefault();
-                    this.firing = true;
-                    console.log('Стрельба!');
-                });
-                
-                fireBtn.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    this.firing = false;
-                });
-            }
-
-            setupTouchPad(padElement, callback) {
-                let activeTouch = null;
-                const handle = padElement.querySelector('.padHandle');
-                
-                const updatePosition = (touch) => {
-                    const rect = padElement.getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
-                    
-                    let x = (touch.clientX - centerX) / (rect.width / 2);
-                    let y = (touch.clientY - centerY) / (rect.height / 2);
-                    
-                    const length = Math.sqrt(x * x + y * y);
-                    if (length > 1) {
-                        x /= length;
-                        y /= length;
-                    }
-                    
-                    handle.style.transform = `translate(${x * 30}px, ${y * 30}px)`;
-                    callback(x, y);
-                };
-                
-                padElement.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    if (!activeTouch) {
-                        activeTouch = e.touches[0].identifier;
-                        updatePosition(e.touches[0]);
+                    if (!this.touchActive && this.gameState === 'playing') {
+                        this.touchActive = true;
+                        this.currentTouch = e.touches[0];
+                        this.updateAim(this.currentTouch);
                     }
                 });
                 
-                padElement.addEventListener('touchmove', (e) => {
+                this.canvas.addEventListener('touchmove', (e) => {
                     e.preventDefault();
-                    for (let touch of e.touches) {
-                        if (touch.identifier === activeTouch) {
-                            updatePosition(touch);
-                            break;
+                    if (this.touchActive) {
+                        for (let touch of e.touches) {
+                            if (touch.identifier === this.currentTouch?.identifier) {
+                                this.currentTouch = touch;
+                                this.updateAim(touch);
+                                break;
+                            }
                         }
                     }
                 });
                 
-                padElement.addEventListener('touchend', (e) => {
+                this.canvas.addEventListener('touchend', (e) => {
                     e.preventDefault();
-                    for (let touch of e.changedTouches) {
-                        if (touch.identifier === activeTouch) {
-                            activeTouch = null;
-                            handle.style.transform = 'translate(0, 0)';
-                            callback(0, 0);
-                            break;
-                        }
+                    if (this.touchActive) {
+                        this.touchActive = false;
+                        this.currentTouch = null;
+                        this.shoot();
                     }
                 });
             }
 
-            setupEvents() {
-                document.querySelector('.nextButton').addEventListener('click', () => {
-                    this.victoryScreen.style.display = 'none';
-                    this.currentLevel++;
-                    this.startLevel();
+            updateAim(touch) {
+                const rect = this.canvas.getBoundingClientRect();
+                const touchX = touch.clientX - rect.left;
+                const touchY = touch.clientY - rect.top;
+                
+                // Ограничиваем движение левой половиной экрана
+                const maxX = this.mirrorLineX - 50;
+                const clampedX = Math.max(50, Math.min(maxX, touchX));
+                const clampedY = Math.max(50, Math.min(this.canvas.height - 50, touchY));
+                
+                // Движение игрока
+                this.player.aimX = clampedX;
+                this.player.aimY = clampedY;
+                
+                // Зеркальное движение врага
+                this.enemy.aimX = this.mirrorLineX + (this.mirrorLineX - clampedX);
+                this.enemy.aimY = clampedY;
+            }
+
+            shoot() {
+                if (this.gameState !== 'playing') return;
+                
+                // Игрок стреляет
+                this.bullets.push({
+                    x: this.player.aimX,
+                    y: this.player.aimY,
+                    vx: 8,
+                    vy: 0,
+                    fromPlayer: true
                 });
+                
+                // Враг стреляет зеркально (с задержкой)
+                setTimeout(() => {
+                    if (this.gameState === 'playing') {
+                        this.bullets.push({
+                            x: this.enemy.aimX,
+                            y: this.enemy.aimY,
+                            vx: -8,
+                            vy: 0,
+                            fromPlayer: false
+                        });
+                    }
+                }, 200);
+                
+                // Эффект выстрела
+                this.createMuzzleFlash(this.player.aimX, this.player.aimY, true);
+                setTimeout(() => {
+                    this.createMuzzleFlash(this.enemy.aimX, this.enemy.aimY, false);
+                }, 200);
             }
 
-            startLevel() {
-                console.log('Запуск уровня', this.currentLevel);
-                this.victoryScreen.style.display = 'none';
-                this.gameActive = true;
-                
-                this.generateLevel();
-                
-                this.player = {
-                    x: 200,
-                    y: 300,
-                    size: 24,
-                    speed: 5
-                };
-                
-                this.camera.x = this.player.x - this.canvas.width / 2;
-                this.camera.y = this.player.y - this.canvas.height / 2;
-                
-                this.updateGameStatus();
-            }
-
-            generateLevel() {
-                this.enemies = [];
-                this.walls = [];
-                
-                const enemyCount = 5 + this.currentLevel * 2;
-                
-                // Внешние стены
-                this.walls.push({x: 0, y: 0, w: this.world.width, h: 40});
-                this.walls.push({x: 0, y: this.world.height - 40, w: this.world.width, h: 40});
-                this.walls.push({x: 0, y: 0, w: 40, h: this.world.height});
-                this.walls.push({x: this.world.width - 40, y: 0, w: 40, h: this.world.height});
-                
-                // Внутренние стены (комнаты)
-                for (let i = 0; i < 6; i++) {
-                    const x = 150 + Math.random() * (this.world.width - 400);
-                    const y = 150 + Math.random() * (this.world.height - 400);
-                    const w = 100 + Math.random() * 150;
-                    const h = 80 + Math.random() * 120;
-                    
-                    this.walls.push({x, y, w, h: 20});
-                    this.walls.push({x, y + h - 20, w, h: 20});
-                    this.walls.push({x, y, w: 20, h});
-                    this.walls.push({x: x + w - 20, y, w: 20, h});
-                }
-                
-                // Враги
-                for (let i = 0; i < enemyCount; i++) {
-                    this.enemies.push({
-                        x: 300 + Math.random() * (this.world.width - 600),
-                        y: 200 + Math.random() * (this.world.height - 400),
-                        size: 20,
-                        alive: true
+            createMuzzleFlash(x, y, isPlayer) {
+                for (let i = 0; i < 8; i++) {
+                    this.effects.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 10 * (isPlayer ? 1 : -1),
+                        vy: (Math.random() - 0.5) * 6,
+                        life: 1.0,
+                        decay: 0.1,
+                        color: isPlayer ? '#00ffff' : '#ff4444'
                     });
                 }
             }
 
             update() {
-                if (!this.gameActive) return;
+                if (this.gameState !== 'playing') return;
                 
-                this.updatePlayer();
-                this.updateCamera();
-                this.updateCombat();
-                this.updateParticles();
-                this.checkVictory();
-                this.updateGameStatus();
+                this.updateBullets();
+                this.updateEffects();
+                this.checkCollisions();
+                this.updateHealthBars();
             }
 
-            updatePlayer() {
-                if (this.moveInput.x !== 0 || this.moveInput.y !== 0) {
-                    this.player.x += this.moveInput.x * this.player.speed;
-                    this.player.y += this.moveInput.y * this.player.speed;
-                }
-                
-                this.player.x = Math.max(50, Math.min(this.world.width - 50, this.player.x));
-                this.player.y = Math.max(50, Math.min(this.world.height - 50, this.player.y));
-            }
-
-            updateCamera() {
-                const targetX = this.player.x - this.canvas.width / 2;
-                const targetY = this.player.y - this.canvas.height / 2;
-                
-                this.camera.x += (targetX - this.camera.x) * 0.1;
-                this.camera.y += (targetY - this.camera.y) * 0.1;
-                
-                this.camera.x = Math.max(0, Math.min(this.world.width - this.canvas.width, this.camera.x));
-                this.camera.y = Math.max(0, Math.min(this.world.height - this.canvas.height, this.camera.y));
-            }
-
-            updateCombat() {
-                if (this.firing) {
-                    this.fireWeapon();
-                }
-            }
-
-            fireWeapon() {
-                let closest = null;
-                let minDist = 300;
-                
-                for (let enemy of this.enemies) {
-                    if (!enemy.alive) continue;
+            updateBullets() {
+                for (let i = this.bullets.length - 1; i >= 0; i--) {
+                    const bullet = this.bullets[i];
+                    bullet.x += bullet.vx;
                     
-                    const dx = enemy.x - this.player.x;
-                    const dy = enemy.y - this.player.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    // Удаляем пули за пределами экрана
+                    if (bullet.x < -50 || bullet.x > this.canvas.width + 50) {
+                        this.bullets.splice(i, 1);
+                        continue;
+                    }
                     
-                    if (dist < minDist) {
-                        minDist = dist;
-                        closest = enemy;
+                    // Проверка попадания
+                    if (bullet.fromPlayer) {
+                        const dx = bullet.x - this.enemy.x;
+                        const dy = bullet.y - this.enemy.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < this.enemy.size) {
+                            this.enemy.health -= 10;
+                            this.createHitEffect(bullet.x, bullet.y, false);
+                            this.bullets.splice(i, 1);
+                        }
+                    } else {
+                        const dx = bullet.x - this.player.x;
+                        const dy = bullet.y - this.player.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (dist < this.player.size) {
+                            this.player.health -= 10;
+                            this.createHitEffect(bullet.x, bullet.y, true);
+                            this.bullets.splice(i, 1);
+                        }
                     }
                 }
-                
-                if (closest) {
-                    closest.alive = false;
-                    this.createExplosion(closest.x, closest.y);
-                    console.log('Враг уничтожен!');
-                }
             }
 
-            createExplosion(x, y) {
-                for (let i = 0; i < 15; i++) {
-                    this.particles.push({
+            createHitEffect(x, y, isPlayer) {
+                for (let i = 0; i < 12; i++) {
+                    this.effects.push({
                         x: x,
                         y: y,
-                        vx: (Math.random() - 0.5) * 12,
-                        vy: (Math.random() - 0.5) * 12,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
                         life: 1.0,
-                        decay: 0.02 + Math.random() * 0.03
+                        decay: 0.05,
+                        color: isPlayer ? '#ff0000' : '#00ff00'
                     });
                 }
             }
 
-            updateParticles() {
-                for (let i = this.particles.length - 1; i >= 0; i--) {
-                    const p = this.particles[i];
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.vy += 0.2;
-                    p.life -= p.decay;
+            updateEffects() {
+                for (let i = this.effects.length - 1; i >= 0; i--) {
+                    const effect = this.effects[i];
+                    effect.x += effect.vx;
+                    effect.y += effect.vy;
+                    effect.vy += 0.2;
+                    effect.life -= effect.decay;
                     
-                    if (p.life <= 0) {
-                        this.particles.splice(i, 1);
+                    if (effect.life <= 0) {
+                        this.effects.splice(i, 1);
                     }
                 }
             }
 
-            checkVictory() {
-                const aliveEnemies = this.enemies.filter(e => e.alive);
-                if (aliveEnemies.length === 0 && this.enemies.length > 0) {
-                    this.victoryScreen.style.display = 'block';
-                    this.gameActive = false;
+            checkCollisions() {
+                // Плавное движение к прицелу
+                this.player.x += (this.player.aimX - this.player.x) * 0.2;
+                this.player.y += (this.player.aimY - this.player.y) * 0.2;
+                this.enemy.x += (this.enemy.aimX - this.enemy.x) * 0.2;
+                this.enemy.y += (this.enemy.aimY - this.enemy.y) * 0.2;
+                
+                // Проверка здоровья
+                if (this.player.health <= 0 || this.enemy.health <= 0) {
+                    this.gameState = 'gameOver';
+                    this.showGameOver();
                 }
             }
 
-            updateGameStatus() {
-                if (this.gameActive && this.enemies) {
-                    const alive = this.enemies.filter(e => e.alive).length;
-                    const total = this.enemies.length;
-                    this.gameStatus.textContent = `Уровень ${this.currentLevel} | Врагов: ${alive}/${total}`;
+            updateHealthBars() {
+                document.querySelector('#playerHealth .healthFill').style.width = this.player.health + '%';
+                document.querySelector('#enemyHealth .healthFill').style.width = this.enemy.health + '%';
+            }
+
+            showGameOver() {
+                const resultText = document.getElementById('resultText');
+                const gameStats = document.getElementById('gameStats');
+                
+                if (this.player.health <= 0) {
+                    resultText.textContent = 'ПОРАЖЕНИЕ!';
+                    resultText.style.color = '#ff0000';
+                } else {
+                    resultText.textContent = 'ПОБЕДА!';
+                    resultText.style.color = '#00ff00';
                 }
+                
+                gameStats.innerHTML = `
+                    <p>Твое здоровье: ${Math.max(0, this.player.health)}%</p>
+                    <p>Здоровье врага: ${Math.max(0, this.enemy.health)}%</p>
+                `;
+                
+                this.gameOverScreen.style.display = 'block';
+            }
+
+            setupEvents() {
+                this.restartBtn.addEventListener('click', () => {
+                    this.gameOverScreen.style.display = 'none';
+                    this.setupGame();
+                    this.gameState = 'playing';
+                });
             }
 
             render() {
-                // Очистка экрана
-                this.ctx.fillStyle = '#0a0a1a';
+                // Очистка
+                this.ctx.fillStyle = 'rgba(10, 10, 40, 0.3)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
-                if (!this.gameActive) return;
-                
-                this.ctx.save();
-                this.ctx.translate(-this.camera.x, -this.camera.y);
-                
-                // Рендер стен
-                this.ctx.fillStyle = '#333355';
-                this.walls.forEach(wall => {
-                    this.ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
-                });
-                
-                // Рендер частиц крови
-                this.ctx.fillStyle = '#ff0000';
-                this.particles.forEach(p => {
-                    this.ctx.globalAlpha = p.life;
-                    this.ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+                // Рендер эффектов
+                this.effects.forEach(effect => {
+                    this.ctx.globalAlpha = effect.life;
+                    this.ctx.fillStyle = effect.color;
+                    this.ctx.fillRect(effect.x - 2, effect.y - 2, 4, 4);
                 });
                 this.ctx.globalAlpha = 1;
+                
+                // Рендер пуль
+                this.ctx.fillStyle = '#ffff00';
+                this.bullets.forEach(bullet => {
+                    this.ctx.fillRect(bullet.x - 3, bullet.y - 3, 6, 6);
+                });
                 
                 // Рендер игрока
                 this.ctx.fillStyle = '#00ffff';
@@ -478,20 +465,26 @@
                     this.player.size
                 );
                 
-                // Рендер врагов
-                this.ctx.fillStyle = '#ff00aa';
-                this.enemies.forEach(enemy => {
-                    if (enemy.alive) {
-                        this.ctx.fillRect(
-                            enemy.x - enemy.size / 2,
-                            enemy.y - enemy.size / 2,
-                            enemy.size,
-                            enemy.size
-                        );
-                    }
-                });
+                // Рендер врага
+                this.ctx.fillStyle = '#ff4444';
+                this.ctx.fillRect(
+                    this.enemy.x - this.enemy.size / 2,
+                    this.enemy.y - this.enemy.size / 2,
+                    this.enemy.size,
+                    this.enemy.size
+                );
                 
-                this.ctx.restore();
+                // Прицелы
+                this.ctx.strokeStyle = '#00ffff';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.aimX, this.player.aimY, 10, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                this.ctx.strokeStyle = '#ff4444';
+                this.ctx.beginPath();
+                this.ctx.arc(this.enemy.aimX, this.enemy.aimY, 10, 0, Math.PI * 2);
+                this.ctx.stroke();
             }
 
             gameLoop() {
@@ -503,7 +496,7 @@
 
         // Запуск игры
         window.addEventListener('load', () => {
-            new NeonGame();
+            new MirrorDuel();
         });
 
         window.addEventListener('resize', () => {
